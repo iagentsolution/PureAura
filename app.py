@@ -9,27 +9,32 @@ st.set_page_config(page_title="PureAura | iAgent Solution", page_icon="✨", lay
 
 st.markdown("""
     <style>
-    .block-container { padding-top: 2rem !important; }
+    .block-container { padding-top: 1.5rem !important; }
     .main-title { 
-        color: #10b981; font-size: 5rem; font-weight: 900; 
-        text-align: center; margin-bottom: 5px; letter-spacing: -3px; line-height: 0.9;
+        color: #10b981; font-size: 4rem; font-weight: 900; 
+        text-align: center; margin-bottom: 5px; letter-spacing: -2px; line-height: 0.9;
     }
     .tagline {
-        text-align: center; color: #64748b; font-size: 1.4rem; 
-        font-weight: 400; margin-bottom: 35px;
+        text-align: center; color: #64748b; font-size: 1.2rem; 
+        font-weight: 400; margin-bottom: 30px;
     }
     .info-box {
         background: rgba(16, 185, 129, 0.05);
-        padding: 20px; border-radius: 20px;
+        padding: 15px; border-radius: 15px;
         border-left: 5px solid #10b981;
-        margin-bottom: 25px;
+        margin-bottom: 20px; font-size: 0.9rem;
     }
     .metric-box {
         background: rgba(255, 255, 255, 0.05);
-        padding: 15px; border-radius: 15px;
+        padding: 12px; border-radius: 15px;
         border: 1px solid rgba(16, 185, 129, 0.3);
         text-align: center;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    /* Ajustes para dispositivos móviles */
+    @media (max-width: 640px) {
+        .main-title { font-size: 2.8rem; }
+        .tagline { font-size: 1rem; margin-bottom: 20px; }
+        h2 { font-size: 1.5rem !important; }
     }
     </style>
     """, unsafe_allow_html=True)
@@ -82,7 +87,7 @@ if not st.session_state.autenticado:
             st.session_state.user_data = {
                 "nombre": nombre, "concepto": concepto if concepto else "Neutro",
                 "sexo": sexo, "avatar": avatar, "signo": obtener_signo(fecha_nac) if fecha_nac else "No especificado",
-"estacion": obtener_estacion_contexto()
+                "estacion": obtener_estacion_contexto()
             }
             st.session_state.autenticado = True
             st.rerun()
@@ -91,6 +96,11 @@ if not st.session_state.autenticado:
 # 4. DASHBOARD Y CHAT
 else:
     u = st.session_state.user_data
+    
+    # Identidad visual persistente en el dashboard
+    st.markdown('<p class="main-title">PureAura</p>', unsafe_allow_html=True)
+    st.markdown(f'<p class="tagline">Análisis activo para {u["nombre"]}</p>', unsafe_allow_html=True)
+
     with st.sidebar:
         st.title("✨ PureAura")
         st.caption("by @iagentsolution")
