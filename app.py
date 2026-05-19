@@ -2,39 +2,34 @@ import streamlit as st
 from groq import Groq
 from datetime import date
 import re
-from fpdf import FPDF
+from fpdf import FPDF  # Recordá tener 'fpdf2' en tu requirements.txt
 
 # 1. CONFIGURACIÓN E IDENTIDAD VISUAL (PureAura by iAgent Solution)
 st.set_page_config(page_title="PureAura | iAgent Solution", page_icon="✨", layout="wide")
 
 st.markdown("""
     <style>
-    .block-container { padding-top: 1.5rem !important; }
+    .block-container { padding-top: 2rem !important; }
     .main-title { 
-        color: #10b981; font-size: 4rem; font-weight: 900; 
-        text-align: center; margin-bottom: 5px; letter-spacing: -2px; line-height: 0.9;
+        color: #10b981; font-size: 5rem; font-weight: 900; 
+        text-align: center; margin-bottom: 5px; letter-spacing: -3px; line-height: 0.9;
     }
     .tagline {
-        text-align: center; color: #64748b; font-size: 1.2rem; 
-        font-weight: 400; margin-bottom: 30px;
+        text-align: center; color: #64748b; font-size: 1.4rem; 
+        font-weight: 400; margin-bottom: 35px;
     }
     .info-box {
         background: rgba(16, 185, 129, 0.05);
-        padding: 15px; border-radius: 15px;
+        padding: 20px; border-radius: 20px;
         border-left: 5px solid #10b981;
-        margin-bottom: 20px; font-size: 0.9rem;
+        margin-bottom: 25px;
     }
     .metric-box {
         background: rgba(255, 255, 255, 0.05);
-        padding: 12px; border-radius: 15px;
+        padding: 15px; border-radius: 15px;
         border: 1px solid rgba(16, 185, 129, 0.3);
         text-align: center;
-    }
-    /* Ajustes para dispositivos móviles */
-    @media (max-width: 640px) {
-        .main-title { font-size: 2.8rem; }
-        .tagline { font-size: 1rem; margin-bottom: 20px; }
-        h2 { font-size: 1.5rem !important; }
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
     }
     </style>
     """, unsafe_allow_html=True)
@@ -53,14 +48,17 @@ def obtener_estacion_contexto():
     elif hoy.month in [9, 10, 11]: return "Primavera (Fase de expansión y vitalidad)"
     else: return "Verano (Fase de alto rendimiento y termorregulación)"
 
-# 2. ESTADO DE SESIÓN
+# 2. INICIALIZACIÓN ROBUSTA DEL ESTADO DE SESIÓN
 if "autenticado" not in st.session_state: st.session_state.autenticado = False
 if "messages" not in st.session_state: st.session_state.messages = []
 if "last_action" not in st.session_state: st.session_state.last_action = None
 if "valores_db" not in st.session_state: st.session_state.valores_db = {"Energía": 5, "Estrés": 5, "Foco": 5}
+if "user_data" not in st.session_state: st.session_state.user_data = None
 
 # 3. PANTALLA DE ACCESO
-if not st.session_state.autenticado:
+if not st.session_state.autenticado or st.session_state.user_data is None:
+    st.session_state.autenticado = False
+    
     st.markdown('<p class="main-title">PureAura</p>', unsafe_allow_html=True)
     st.markdown('<p class="tagline">Purificá el caos, dominá tu ritmo</p>', unsafe_allow_html=True)
     
@@ -91,23 +89,23 @@ if not st.session_state.autenticado:
             }
             st.session_state.autenticado = True
             st.rerun()
-        else: st.error("⚠️ Necesitamos al menos tu nombre para arrancar.")
+        else: 
+            st.error("⚠️ Necesitamos al menos tu nombre para arrancar.")
 
 # 4. DASHBOARD Y CHAT
 else:
     u = st.session_state.user_data
-    
-    # Identidad visual persistente en el dashboard
-    st.markdown('<p class="main-title">PureAura</p>', unsafe_allow_html=True)
-    st.markdown(f'<p class="tagline">Análisis activo para {u["nombre"]}</p>', unsafe_allow_html=True)
-
     with st.sidebar:
         st.title("✨ PureAura")
         st.caption("by @iagentsolution")
         st.write(f"👤 {u['nombre']}")
         st.write(f"🔮 Signo: {u['signo']}")
         st.divider()
-        api_key = st.text_input("Groq API Key (Admin)", type="password")
+        
+        # Conexión automática: Prioriza secrets, evita que quede vacío si la app duerme
+        secret_key = st.secrets.get("GROQ_API_KEY", "")
+        api_key = st.text_input("Groq API Key (Admin)", type="password", value=secret_key)
+        
         if st.button("Finalizar Sesión"):
             st.session_state.clear()
             st.rerun()
@@ -139,39 +137,98 @@ else:
         with b3:
             if st.button("🧠 Estrategia Mental"): st.session_state.last_action = "Optimizar mi foco y manejo de ansiedad."
 
+    # Renderizado seguro de mensajes anteriores
     for msg in st.session_state.messages:
-        with st.chat_message(msg["role"]): st.markdown(msg["content"])
+        with st.chat_message(msg["role"]): 
+            st.markdown(msg["content"])
 
     def llamar_ia(mensajes):
-        if not api_key: return "⚠️ Falta API Key.", None
-        client = Groq(api_key=api_key)
-        system = f"Sos PureAura de @iagentsolution. Analizás a {u['nombre']}, {u['sexo']}, signo {u['signo']}. Autopercepción: {u['concepto']}. Contexto estacional: {u['estacion']}. Usá metáforas de su arquetipo ({u['avatar']}). Al final incluí métricas: [E:X, S:Y, F:Z] (1-10)."
+        if not api_key: 
+            return "⚠️ Falta la API Key de Groq. Configurala en los Secrets de Streamlit o en la barra lateral.", None
         try:
+            client = Groq(api_key=api_key)
+            system = f"Sos PureAura de @iagentsolution. Analizás a {u['nombre']}, {u['sexo']}, signo {u['signo']}. Autopercepción: {u['concepto']}. Contexto estacional: {u['estacion']}. Usá metáforas de su arquetipo ({u['avatar']}). Al final incluí métricas en un único bloque exacto al final del mensaje: [E:X, S:Y, F:Z] donde X, Y y Z sean números enteros del 1 al 10."
             res = client.chat.completions.create(model="llama-3.3-70b-versatile", messages=[{"role": "system", "content": system}] + mensajes, temperature=0.7)
             raw = res.choices[0].message.content
+            
             match = re.search(r"\[E:(\d+),\s*S:(\d+),\s*F:(\d+)\]", raw)
             mets = {"Energía": int(match.group(1)), "Estrés": int(match.group(2)), "Foco": int(match.group(3))} if match else None
-            return re.sub(r"\[E:\d+,\s*S:\d+,\s*F:\d+\]", "", raw).strip(), mets
-        except: return "Error de conexión.", None
+            
+            clean_txt = re.sub(r"\[E:\d+,\s*S:\d+,\s*F:\d+\]", "", raw).strip()
+            return clean_txt, mets
+        except Exception as error: 
+            return f"⚠️ Error al conectar con el servidor de IA: {str(error)}", None
 
     user_input = st.chat_input("Escribí acá...")
     prompt = user_input or st.session_state.last_action
+    
     if prompt:
         st.session_state.last_action = None
         st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"): st.markdown(prompt)
+        with st.chat_message("user"): 
+            st.markdown(prompt)
+            
         with st.chat_message("assistant"):
             txt, mets = llamar_ia(st.session_state.messages)
             st.markdown(txt)
-            if mets: st.session_state.valores_db = mets
+            if mets: 
+                st.session_state.valores_db = mets
+        
         st.session_state.messages.append({"role": "assistant", "content": txt})
         st.rerun()
 
+    # FUNCION DE EXPORTACIÓN A PDF CORREGIDA PARA FPDF2
     if len(st.session_state.messages) >= 4:
         st.divider()
-        if st.button("📥 Descargar Diagnóstico (.PDF)"):
+        
+        # Definimos la función que arma el PDF en memoria para fpdf2
+        def generar_pdf_bytes():
             pdf = FPDF()
             pdf.add_page()
-            pdf.set_font("Arial", "B", 16); pdf.cell(0, 10, "PureAura | iAgent Solution", ln=True, align="C")
-            pdf_out = pdf.output(dest='S')
-            st.download_button("Click para bajar PDF", pdf_out, f"PureAura_{u['nombre']}.pdf", "application/pdf")
+            
+            # Encabezado principal
+            pdf.set_font("Helvetica", "B", 16)
+            pdf.cell(0, 10, "PureAura | iAgent Solution", new_x="LMARGIN", new_y="NEXT", align="C")
+            pdf.set_font("Helvetica", "", 10)
+            pdf.cell(0, 10, f"Fecha del Reporte: {date.today()}", new_x="LMARGIN", new_y="NEXT", align="C")
+            pdf.ln(5)
+            
+            # Datos del Usuario
+            pdf.set_font("Helvetica", "B", 12)
+            pdf.cell(0, 8, f"Diagnostico para: {u['nombre']}", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font("Helvetica", "", 10)
+            pdf.cell(0, 6, f"Signo: {u['signo']} | Contexto: {u['estacion']}", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(0, 6, f"Métricas actuales -> Energía: {e}/10 | Estrés: {s}/10 | Foco: {f}/10", new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(10)
+            
+            # Transcripción de la conversación (Controlando tildes y saltos de línea largos)
+            pdf.set_font("Helvetica", "B", 12)
+            pdf.cell(0, 8, "Historial de Análisis:", new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(2)
+            
+            for msg in st.session_state.messages:
+                role_label = "Tú" if msg["role"] == "user" else "PureAura"
+                pdf.set_font("Helvetica", "B", 10)
+                pdf.cell(0, 6, f"[{role_label}]:", new_x="LMARGIN", new_y="NEXT")
+                
+                pdf.set_font("Helvetica", "", 10)
+                # Reemplazamos caracteres conflictivos para evitar errores de codificación latin-1
+                texto_limpio = msg["content"].encode('latin-1', 'replace').decode('latin-1')
+                
+                # multi_cell calcula automáticamente los saltos de línea del texto de la IA
+                pdf.multi_cell(0, 5, texto_limpio, new_x="LMARGIN", new_y="NEXT")
+                pdf.ln(4)
+                
+            return pdf.output() # fpdf2 por defecto devuelve bytes si no especificás archivo
+
+        # Generador directo en el download_button de Streamlit para evitar recargas raras
+        try:
+            pdf_data = generar_pdf_bytes()
+            st.download_button(
+                label="📥 Descargar Diagnóstico (.PDF)",
+                data=pdf_data,
+                file_name=f"PureAura_{u['nombre']}.pdf",
+                mime="application/pdf"
+            )
+        except Exception as e_pdf:
+            st.error(f"Error al estructurar el PDF: {e_pdf}")
