@@ -22,6 +22,11 @@ if "perfil_creado" not in st.session_state:
     st.session_state.perfil_creado = False
 
 # --- FUNCIONES ---
+def limpiar_texto(texto):
+    """Elimina o reemplaza caracteres que FPDF no puede renderizar en fuentes estándar"""
+    # FPDF nativo no se lleva bien con emojis. Esto evita que rompa el PDF.
+    return texto.encode('ascii', 'ignore').decode('ascii')
+
 def generar_pdf(nombre, avatar, historial):
     pdf = FPDF()
     pdf.add_page()
@@ -39,25 +44,28 @@ def generar_pdf(nombre, avatar, historial):
     # Datos del Usuario
     pdf.set_font("Arial", 'B', 12)
     pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 10, f"Usuario: {nombre}", ln=True)
+    pdf.cell(0, 10, f"Usuario: {limpiar_texto(nombre)}", ln=True)
     pdf.cell(0, 10, f"Enfoque: {avatar}", ln=True)
     pdf.ln(5)
     
     # Contenido del Chat
-    pdf.set_font("Arial", '', 11)
     for msg in historial:
-        role = "Tú" if msg["role"] == "user" else "PureAura"
+        role = "Tu" if msg["role"] == "user" else "PureAura"
         pdf.set_font("Arial", 'B', 11)
         pdf.multi_cell(0, 10, f"{role}:")
         pdf.set_font("Arial", '', 11)
-        pdf.multi_cell(0, 10, msg["content"])
+        
+        # Limpiamos el contenido para que no rompa por emojis o formatos raros
+        texto_limpio = limpiar_texto(msg["content"])
+        pdf.multi_cell(0, 10, texto_limpio)
         pdf.ln(2)
         
     pdf.ln(10)
     pdf.set_font("Arial", 'I', 9)
-    pdf.multi_cell(0, 10, "Gracias por confiar en iAgent Solution. Para soluciones empresariales o agentes a medida, contactanos vía Instagram @iagentsolution.")
+    pdf.multi_cell(0, 10, "Gracias por confiar en iAgent Solution. Para soluciones empresariales o agentes a medida, contactanos via Instagram @iagentsolution.")
     
-    return pdf.output(dest='S').encode('latin-1', errors='replace')
+    # Retorna los bytes directamente (Compatible con fpdf y fpdf2)
+    return pdf.output()
 
 def llamar_ia(mensajes, nombre, avatar):
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
@@ -107,6 +115,7 @@ else:
     for mensaje in st.session_state.mensajes:
         with st.chat_message(mensaje["role"]):
             st.markdown(mensaje["content"])
+            
     # Input del Chat
     if prompt := st.chat_input("¿En qué trabajamos hoy?"):
         st.session_state.mensajes.append({"role": "user", "content": prompt})
@@ -121,18 +130,22 @@ else:
             )
             st.markdown(respuesta)
             st.session_state.mensajes.append({"role": "assistant", "content": respuesta})
+            st.rerun() # Fuerza el refresco para actualizar el estado del botón de descarga
 
     # --- BOTÓN DE DESCARGA ---
     if len(st.session_state.mensajes) > 0:
         st.divider()
-        pdf_bytes = generar_pdf(
-            st.session_state.user_data["nombre"], 
-            st.session_state.user_data["avatar"], 
-            st.session_state.mensajes
-        )
-        st.download_button(
-            label="📥 Descargar mi Plan en PDF",
-            data=pdf_bytes,
-            file_name=f"Plan_PureAura_{st.session_state.user_data['nombre']}.pdf",
-            mime="application/pdf"
-        )
+        try:
+            pdf_bytes = generar_pdf(
+                st.session_state.user_data["nombre"], 
+                st.session_state.user_data["avatar"], 
+                st.session_state.mensajes
+            )
+            st.download_button(
+                label="📥 Descargar mi Plan en PDF",
+                data=bytes(pdf_bytes), # Nos aseguramos de pasarle un objeto de bytes puro
+                file_name=f"Plan_PureAura_{st.session_state.user_data['nombre']}.pdf",
+                mime="application/pdf"
+            )
+        except Exception as e:
+            st.error(f"Hubo un problema al generar el PDF: {e}")
