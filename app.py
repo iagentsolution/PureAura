@@ -1,4 +1,4 @@
-[19/5/26 6:47 p. m.] Elsa Vandija: import streamlit as st
+import streamlit as st
 from groq import Groq
 from datetime import date
 import re
@@ -51,9 +51,9 @@ else:
     with st.sidebar:
         st.title("✨ Status")
         e, s, f = st.session_state.valores_db.values()
-        st.markdown(f"<div class='metric-box'>⚡ E: {e} | 🚨 S: {s} | 🎯 F: {f}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-box'>⚡️ E: {e} | 🚨 S: {s} | 🎯 F: {f}</div>", unsafe_allow_html=True)
         st.divider()
-        u["avatar"] = st.selectbox("Arquetipo", ["Neutro", "⚡ High Performer", "🌿 Zen", "🛡️ Estoico", "🎮 Gamer", "🔥 Urban"])
+        u["avatar"] = st.selectbox("Arquetipo", ["Neutro", "⚡️ High Performer", "🌿 Zen", "🛡 Estoico", "🎮 Gamer", "🔥 Urban"])
         if st.button("Nueva Sesión"):
             st.session_state.clear()
             st.rerun()
@@ -88,7 +88,7 @@ else:
         pdf.ln(5)
         pdf.line(10, pdf.get_y(), 200, pdf.get_y())
         pdf.ln(5)
-[19/5/26 6:47 p. m.] Elsa Vandija: for m in st.session_state.messages:
+for m in st.session_state.messages:
             pdf.set_font("Helvetica", "B", 10)
             pdf.set_text_color(100, 100, 100)
             role = "USUARIO" if m["role"] == "user" else "PUREAURA"
