@@ -10,6 +10,13 @@ st.markdown("""
     .stTextInput>div>div>input { border-radius: 15px; }
     .footer { text-align: center; margin-top: 50px; color: #64748b; font-size: 14px; }
     .footer a { color: #10b981; text-decoration: none; font-weight: bold; }
+    
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    div[data-testid="stDecoration"] {display: none;}
+    button[title="View source"] {display: none;}
+    .viewerBadge_link__1S137 {display: none !important;}
     </style>
     """, unsafe_allow_html=True)
 
