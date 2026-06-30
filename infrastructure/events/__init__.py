@@ -1,0 +1,3 @@
+"""
+Infrastructure event adapters.
+"""
